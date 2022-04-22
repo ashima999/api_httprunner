@@ -1,0 +1,25 @@
+import time
+
+from httprunner import __version__
+
+host = "https://apisaastest.kpinfo.cn/api"
+
+def get_httprunner_version():
+    return __version__
+
+
+def assert_isOauth(data_list):
+    for i in data_list:
+        is_oauth = i.is_oauth
+        if is_oauth == 1:
+            return i.id
+        break
+
+    return
+
+
+def get_host():
+    return host
+
+def get_token():
+    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImp0aSI6ImpkJUBkYWQ_SCJ9.eyJpc3MiOiJodHRwOlwvXC9jY3diLmNuIiwiYXVkIjoiaHR0cDpcL1wvY2N3Yi5jbiIsImp0aSI6ImpkJUBkYWQ_SCIsInVzZXJfaW5mbyI6eyJpZCI6IjIwMTUwOTIwMjE0NTAzN0RVTUVNIiwibmFtZSI6Imxsc2tpbmciLCJyZWFsX25hbWUiOiJcdTk2NDZcdTVlZmFcdTVmYjciLCJlbWFpbCI6IiIsInNpZCI6IjMzNzIwMTgwMSIsInJvbGVfaWQiOjEwLCJwYXNzd29yZCI6IjNjZDVkOGIyZjBlNTU4NmVmNDNiZTVkNDRjYWM3OGQyIiwidXNlcl9pZCI6IjIwMTcwNDI3MDAxIiwib3JnYW5fcGlkIjpudWxsLCJvcmdhbl9pZCI6IjIwMTkwMzEyMTgwNDAyMjI4NDQ0IiwiZHV0eV9pZCI6bnVsbCwic2V4IjoibWFuIiwidGVsIjoiMTM3MDg0NjI4OTMiLCJydWxlcyI6IiIsInN0YXR1cyI6MSwicmVnaXN0cmF0aW9uIjoiIiwiY2xpZW50IjoiaW9zIiwibWVtYmVyX2lkIjoiMTYxMjA0NjkyNzAxNDkxNCIsInF1a2xpdmVfbmFtZSI6IjJMSlBHWDBKIiwiaGVhZHBpYyI6bnVsbCwibGF0aXR1ZGUiOiIyNC45OTc1NTQiLCJsb25naXR1ZGUiOiIxMDIuNjkyMzQ0IiwiY3JlYXRlX3RpbWUiOiIyMDE3LTA4LTA2IDE2OjM0OjAxIiwidXBkYXRlX3RpbWUiOiIyMDIyLTA0LTA4IDE1OjAwOjMwIiwiaXNfaW0iOjAsImxhc3RfbG9naW5faXAiOiIxNzIuMjcuMC4xIiwibGFzdF9sb2dpbl90aW1lIjoxNjQ5NDAxMjMwLCJpc19zdXBlcmF1ZGl0b3IiOjEsImlzX3ByaW5jaXBhbCI6MCwiZGVmYXVsdF9jb3B5cmlnaHRfb3JnIjoiIiwic291cmNlX3N1cGVyX2FkbWluIjoxLCJkZXZlbG9wZXIiOjEsInNvdXJjZV9pZCI6IjgifX0.0QCJVp4tuME-Ijtvlu16RzPFiMfnVlBMKq94kyfBaZs"
