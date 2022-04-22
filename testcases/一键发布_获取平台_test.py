@@ -1,5 +1,5 @@
 from httprunner import HttpRunner, Config, Step, RunRequest, RunTestCase
-
+import pytest
 
 class TestGetType(HttpRunner):
     config = (
@@ -23,7 +23,8 @@ class TestGetType(HttpRunner):
             )
             .with_params(**{"type_id": "2017001"})
             .extract()
-            .with_jmespath("body.data[0].id", "id")
+            .with_jmespath("body.data","data")
+            .with_jmespath("body.data[-1].id", "id")
             .validate()
             .assert_equal("status_code", 200)
             .assert_equal("body.code", 200)
