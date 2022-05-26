@@ -20,14 +20,14 @@ class TestEdit(HttpRunner):
             .with_json(
                 {
                     "id": "$item_id",
-                    "name": "测试账号修改",
+                    "name": "测试账号修改0523",
                     "app_id": "2273983074",
                     "app_secret": "d0174ed3c11ec3180ba8010e20815f92",
                 }
             )
             .validate()
             .assert_equal("body.code", 200)
-            .assert_equal("body.message", "OK")
+            .assert_equal("body.message", "修改成功")
         ),
     ]
 

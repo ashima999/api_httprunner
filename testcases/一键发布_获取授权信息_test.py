@@ -17,7 +17,7 @@ class TestOauth(HttpRunner):
                     "cw-authorization": "${get_token()}",
                 }
             )
-            .with_params(**{"id": 2})
+            .with_params(**{"id": "$id"})
             .validate()
             .assert_equal("body.code",200)
             .assert_equal("body.message","OK")
