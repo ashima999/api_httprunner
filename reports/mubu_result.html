@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function find_all(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sort_column(elem) {
+    toggle_sort_states(elem);
+    var colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    var key;
+    if (elem.classList.contains('numeric')) {
+        key = key_num;
+    } else if (elem.classList.contains('result')) {
+        key = key_result;
+    } else {
+        key = key_alpha;
+    }
+    sort_table(elem, key(colIndex));
+}
+
+function show_all_extras() {
+    find_all('.col-result').forEach(show_extras);
+}
+
+function hide_all_extras() {
+    find_all('.col-result').forEach(hide_extras);
+}
+
+function show_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.remove("collapsed");
+    expandcollapse.classList.remove("expander");
+    expandcollapse.classList.add("collapser");
+}
+
+function hide_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.add("collapsed");
+    expandcollapse.classList.remove("collapser");
+    expandcollapse.classList.add("expander");
+}
+
+function show_filters() {
+    var filter_items = document.getElementsByClassName('filter');
+    for (var i = 0; i < filter_items.length; i++)
+        filter_items[i].hidden = false;
+}
+
+function add_collapse() {
+    // Add links for show/hide all
+    var resulttable = find('table#results-table');
+    var showhideall = document.createElement("p");
+    showhideall.innerHTML = '<a href="javascript:show_all_extras()">Show all details</a> / ' +
+                            '<a href="javascript:hide_all_extras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    find_all('.col-result').forEach(function(elem) {
+        var collapsed = get_query_parameter('collapsed') || 'Passed';
+        var extras = elem.parentNode.nextElementSibling;
+        var expandcollapse = document.createElement("span");
+        if (extras.classList.contains("collapsed")) {
+            expandcollapse.classList.add("expander")
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add("collapsed");
+            expandcollapse.classList.add("expander");
+        } else {
+            expandcollapse.classList.add("collapser");
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener("click", function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains("collapsed")) {
+                show_extras(event.currentTarget);
+            } else {
+                hide_extras(event.currentTarget);
+            }
+        });
+    })
+}
+
+function get_query_parameter(name) {
+    var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () {
+    reset_sort_headers();
+
+    add_collapse();
+
+    show_filters();
+
+    sort_column(find('.initial-sort'));
+
+    find_all('.sortable').forEach(function(elem) {
+        elem.addEventListener("click",
+                              function(event) {
+                                  sort_column(elem);
+                              }, false)
+    });
+
+};
+
+function sort_table(clicked, key_func) {
+    var rows = find_all('.results-table-row');
+    var reversed = !clicked.classList.contains('asc');
+    var sorted_rows = sort(rows, key_func, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    var thead = document.getElementById("results-table-head");
+    document.getElementById('results-table').remove();
+    var parent = document.createElement("table");
+    parent.id = "results-table";
+    parent.appendChild(thead);
+    sorted_rows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName("BODY")[0].appendChild(parent);
+}
+
+function sort(items, key_func, reversed) {
+    var sort_array = items.map(function(item, i) {
+        return [key_func(item), i];
+    });
+
+    sort_array.sort(function(a, b) {
+        var key_a = a[0];
+        var key_b = b[0];
+
+        if (key_a == key_b) return 0;
+
+        if (reversed) {
+            return (key_a < key_b ? 1 : -1);
+        } else {
+            return (key_a > key_b ? 1 : -1);
+        }
+    });
+
+    return sort_array.map(function(item) {
+        var index = item[1];
+        return items[index];
+    });
+}
+
+function key_alpha(col_index) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[col_index].firstChild.data.toLowerCase();
+    };
+}
+
+function key_num(col_index) {
+    return function(elem) {
+        return parseFloat(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function key_result(col_index) {
+    return function(elem) {
+        var strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+                       'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function reset_sort_headers() {
+    find_all('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    find_all('.sortable').forEach(function(elem) {
+        var icon = document.createElement("div");
+        icon.className = "sort-icon";
+        icon.textContent = "vvv";
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove("desc", "active");
+        elem.classList.add("asc", "inactive");
+    });
+}
+
+function toggle_sort_states(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        reset_sort_headers();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function is_all_rows_hidden(value) {
+  return value.hidden == false;
+}
+
+function filter_table(elem) {
+    var outcome_att = "data-test-result";
+    var outcome = elem.getAttribute(outcome_att);
+    class_outcome = outcome + " results-table-row";
+    var outcome_rows = document.getElementsByClassName(class_outcome);
+
+    for(var i = 0; i < outcome_rows.length; i++){
+        outcome_rows[i].hidden = !elem.checked;
+    }
+
+    var rows = find_all('.results-table-row').filter(is_all_rows_hidden);
+    var all_rows_hidden = rows.length == 0 ? true : false;
+    var not_found_message = document.getElementById("not-found-message");
+    not_found_message.hidden = !all_rows_hidden;
+}
+</script>
+    <h1>mubu_result.html</h1>
+    <p>Report generated on 14-Apr-2022 at 22:49:35 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v2.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>JAVA_HOME</td>
+        <td>D:\dev-software\jdk1.8.0_45</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.11.0", "pytest": "5.4.3"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19044-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "2.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.9.9</td></tr></table>
+    <h2>Summary</h2>
+    <p>1 tests ran in 1.21 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">0 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable numeric" col="duration">Duration</th>
+          <th>Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">har/api_mubu_test.py::TestCaseApiMubu::test_start</td>
+          <td class="col-duration">0.09</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">self = &lt;har.api_mubu_test.TestCaseApiMubu object at 0x0000019924FE4BE0&gt;<br/>param = None<br/><br/>    def test_start(self, param: Dict = None) -&gt; &quot;HttpRunner&quot;:<br/>        &quot;&quot;&quot;main entrance, discovered by pytest&quot;&quot;&quot;<br/>        self.__init_tests__()<br/>        self.__project_meta = self.__project_meta or load_project_meta(<br/>            self.__config.path<br/>        )<br/>        self.__case_id = self.__case_id or str(uuid.uuid4())<br/>        self.__log_path = self.__log_path or os.path.join(<br/>            self.__project_meta.RootDir, &quot;logs&quot;, f&quot;{self.__case_id}.run.log&quot;<br/>        )<br/>        log_handler = logger.add(self.__log_path, level=&quot;DEBUG&quot;)<br/>    <br/>        # parse config name<br/>        config_variables = self.__config.variables<br/>        if param:<br/>            config_variables.update(param)<br/>        config_variables.update(self.__session_variables)<br/>        self.__config.name = parse_data(<br/>            self.__config.name, config_variables, self.__project_meta.functions<br/>        )<br/>    <br/>        if USE_ALLURE:<br/>            # update allure report meta<br/>            allure.dynamic.title(self.__config.name)<br/>            allure.dynamic.description(f&quot;TestCase ID: {self.__case_id}&quot;)<br/>    <br/>        logger.info(<br/>            f&quot;Start to run testcase: {self.__config.name}, TestCase ID: {self.__case_id}&quot;<br/>        )<br/>    <br/>        try:<br/>&gt;           return self.run_testcase(<br/>                TestCase(config=self.__config, teststeps=self.__teststeps)<br/>            )<br/><br/>..\httprunner\lib\site-packages\httprunner\runner.py:455: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/>..\httprunner\lib\site-packages\httprunner\runner.py:359: in run_testcase<br/>    extract_mapping = self.__run_step(step)<br/>..\httprunner\lib\site-packages\httprunner\runner.py:295: in __run_step<br/>    step_data = self.__run_step_request(step)<br/>..\httprunner\lib\site-packages\httprunner\runner.py:208: in __run_step_request<br/>    resp_obj.validate(<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _<br/><br/>self = &lt;httprunner.response.ResponseObject object at 0x000001992509FE50&gt;<br/>validators = [{&#x27;equal&#x27;: [&#x27;status_code&#x27;, 200, &#x27;&#x27;]}, {&#x27;equal&#x27;: [&#x27;body.code&#x27;, 0, &#x27;&#x27;]}]<br/>variables_mapping = {&#x27;request&#x27;: {&#x27;allow_redirects&#x27;: True, &#x27;cookies&#x27;: {}, &#x27;data&#x27;: None, &#x27;json&#x27;: {&#x27;callbackType&#x27;: 0, &#x27;password&#x27;: &#x27;LXE@19951101&#x27;, &#x27;phone&#x27;: &#x27;17328856339&#x27;}, ...}, &#x27;response&#x27;: &lt;httprunner.response.ResponseObject object at 0x000001992509FE50&gt;}<br/>functions_mapping = {&#x27;get_httprunner_version&#x27;: &lt;function get_httprunner_version at 0x0000019924FC89D0&gt;, &#x27;sleep&#x27;: &lt;function sleep at 0x0000019924FC88B0&gt;, &#x27;sum_two&#x27;: &lt;function sum_two at 0x0000019924FC8700&gt;}<br/><br/>    def validate(<br/>        self,<br/>        validators: Validators,<br/>        variables_mapping: VariablesMapping = None,<br/>        functions_mapping: FunctionsMapping = None,<br/>    ) -&gt; NoReturn:<br/>    <br/>        variables_mapping = variables_mapping or {}<br/>        functions_mapping = functions_mapping or {}<br/>    <br/>        self.validation_results = {}<br/>        if not validators:<br/>            return<br/>    <br/>        validate_pass = True<br/>        failures = []<br/>    <br/>        for v in validators:<br/>    <br/>            if &quot;validate_extractor&quot; not in self.validation_results:<br/>                self.validation_results[&quot;validate_extractor&quot;] = []<br/>    <br/>            u_validator = uniform_validator(v)<br/>    <br/>            # check item<br/>            check_item = u_validator[&quot;check&quot;]<br/>            if &quot;$&quot; in check_item:<br/>                # check_item is variable or function<br/>                check_item = parse_data(<br/>                    check_item, variables_mapping, functions_mapping<br/>                )<br/>                check_item = parse_string_value(check_item)<br/>    <br/>            if check_item and isinstance(check_item, Text):<br/>                check_value = self._search_jmespath(check_item)<br/>            else:<br/>                # variable or function evaluation result is &quot;&quot; or not text<br/>                check_value = check_item<br/>    <br/>            # comparator<br/>            assert_method = u_validator[&quot;assert&quot;]<br/>            assert_func = get_mapping_function(assert_method, functions_mapping)<br/>    <br/>            # expect item<br/>            expect_item = u_validator[&quot;expect&quot;]<br/>            # parse expected value with config/teststep/extracted variables<br/>            expect_value = parse_data(expect_item, variables_mapping, functions_mapping)<br/>    <br/>            # message<br/>            message = u_validator[&quot;message&quot;]<br/>            # parse message with config/teststep/extracted variables<br/>            message = parse_data(message, variables_mapping, functions_mapping)<br/>    <br/>            validate_msg = f&quot;assert {check_item} {assert_method} {expect_value}({type(expect_value).__name__})&quot;<br/>    <br/>            validator_dict = {<br/>                &quot;comparator&quot;: assert_method,<br/>                &quot;check&quot;: check_item,<br/>                &quot;check_value&quot;: check_value,<br/>                &quot;expect&quot;: expect_item,<br/>                &quot;expect_value&quot;: expect_value,<br/>                &quot;message&quot;: message,<br/>            }<br/>    <br/>            try:<br/>                assert_func(check_value, expect_value, message)<br/>                validate_msg += &quot;\t==&gt; pass&quot;<br/>                logger.info(validate_msg)<br/>                validator_dict[&quot;check_result&quot;] = &quot;pass&quot;<br/>            except AssertionError as ex:<br/>                validate_pass = False<br/>                validator_dict[&quot;check_result&quot;] = &quot;fail&quot;<br/>                validate_msg += &quot;\t==&gt; fail&quot;<br/>                validate_msg += (<br/>                    f&quot;\n&quot;<br/>                    f&quot;check_item: {check_item}\n&quot;<br/>                    f&quot;check_value: {check_value}({type(check_value).__name__})\n&quot;<br/>                    f&quot;assert_method: {assert_method}\n&quot;<br/>                    f&quot;expect_value: {expect_value}({type(expect_value).__name__})&quot;<br/>                )<br/>                message = str(ex)<br/>                if message:<br/>                    validate_msg += f&quot;\nmessage: {message}&quot;<br/>    <br/>                logger.error(validate_msg)<br/>                failures.append(validate_msg)<br/>    <br/>            self.validation_results[&quot;validate_extractor&quot;].append(validator_dict)<br/>    <br/>        if not validate_pass:<br/>            failures_string = &quot;\n&quot;.join([failure for failure in failures])<br/>&gt;           raise ValidationFailure(failures_string)<br/><span class="error">E           httprunner.exceptions.ValidationFailure: assert status_code equal 200(int)	==&gt; fail</span><br/><span class="error">E           check_item: status_code</span><br/><span class="error">E           check_value: 0(int)</span><br/><span class="error">E           assert_method: equal</span><br/><span class="error">E           expect_value: 200(int)</span><br/><span class="error">E           assert body.code equal 0(int)	==&gt; fail</span><br/><span class="error">E           check_item: body.code</span><br/><span class="error">E           check_value: None(NoneType)</span><br/><span class="error">E           assert_method: equal</span><br/><span class="error">E           expect_value: 0(int)</span><br/><br/>..\httprunner\lib\site-packages\httprunner\response.py:273: ValidationFailure<br/> ------------------------------Captured stderr call------------------------------ <br/>2022-04-14 22:49:35.044 | INFO     | httprunner.loader:load_dot_env_file:127 - Loading environment variables from D:\dev-file\pythonWorkSpace\api_httprunner\.env
+2022-04-14 22:49:35.045 | DEBUG    | httprunner.utils:set_os_environ:33 - Set OS environment variable: USERNAME
+2022-04-14 22:49:35.046 | DEBUG    | httprunner.utils:set_os_environ:33 - Set OS environment variable: PASSWORD
+2022-04-14 22:49:35.059 | INFO     | httprunner.runner:test_start:450 - Start to run testcase: testcase description, TestCase ID: 36643de2-eb4d-4791-b99f-49bef5238f01
+2022-04-14 22:49:35.061 | INFO     | httprunner.runner:__run_step:292 - run step begin: /v3/api/user/phone_login &gt;&gt;&gt;&gt;&gt;&gt;
+2022-04-14 22:49:35.121 | WARNING  | httprunner.client:request:188 - failed to get client address info: &#x27;NoneType&#x27; object has no attribute &#x27;connection&#x27;
+2022-04-14 22:49:35.122 | WARNING  | httprunner.client:request:196 - failed to get server address info: &#x27;NoneType&#x27; object has no attribute &#x27;connection&#x27;
+2022-04-14 22:49:35.123 | DEBUG    | httprunner.client:log_print:40 - 
+================== request details ==================
+method   : POST
+url      : https://api2.mubu.com/v3/api/user/phone_login
+headers  : {
+    &quot;Content-Length&quot;: &quot;0&quot;
+}
+cookies  : {}
+body     : None
+
+2022-04-14 22:49:35.125 | DEBUG    | httprunner.client:log_print:40 - 
+================== response details ==================
+status_code : 0
+headers  : {}
+cookies  : {}
+encoding : None
+content_type : 
+body     : 
+
+2022-04-14 22:49:35.126 | ERROR    | httprunner.client:request:215 - HTTPSConnectionPool(host=&#x27;api2.mubu.com&#x27;, port=443): Max retries exceeded with url: /v3/api/user/phone_login (Caused by ProxyError(&#x27;Your proxy appears to only use HTTP and not HTTPS, try changing your proxy URL to be HTTP. See: https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html#https-proxy-error-http-proxy&#x27;, SSLError(SSLError(1, &#x27;[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1129)&#x27;))))
+2022-04-14 22:49:35.126 | ERROR    | httprunner.response:validate:266 - assert status_code equal 200(int)	==&gt; fail
+check_item: status_code
+check_value: 0(int)
+assert_method: equal
+expect_value: 200(int)
+2022-04-14 22:49:35.127 | ERROR    | httprunner.response:validate:266 - assert body.code equal 0(int)	==&gt; fail
+check_item: body.code
+check_value: None(NoneType)
+assert_method: equal
+expect_value: 0(int)
+2022-04-14 22:49:35.127 | ERROR    | httprunner.runner:log_req_resp_details:194 - 
+******************************** DETAILED REQUEST &amp; RESPONSE ********************************
+====== request details ======
+url: https://api2.mubu.com/v3/api/user/phone_login
+method: POST
+headers: {&#x27;content-length&#x27;: &#x27;66&#x27;, &#x27;sec-ch-ua&#x27;: &#x27;&quot; Not A;Brand&quot;;v=&quot;99&quot;, &quot;Chromium&quot;;v=&quot;96&quot;, &quot;Google Chrome&quot;;v=&quot;96&quot;&#x27;, &#x27;version&#x27;: &#x27;3.0.0-2.0.0.1824&#x27;, &#x27;sec-ch-ua-mobile&#x27;: &#x27;?0&#x27;, &#x27;user-agent&#x27;: &#x27;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36&#x27;, &#x27;data-unique-id&#x27;: &#x27;a2933ade-b323-4a3f-8433-da3c8d5ece1c&#x27;, &#x27;content-type&#x27;: &#x27;application/json;charset=UTF-8&#x27;, &#x27;accept&#x27;: &#x27;application/json, text/plain, */*&#x27;, &#x27;jwt-token&#x27;: &#x27;&#x27;, &#x27;x-request-id&#x27;: &#x27;c1f970e0-9d30-4768-83f5-fce2b0c8d0d9&#x27;, &#x27;sec-ch-ua-platform&#x27;: &#x27;&quot;Windows&quot;&#x27;, &#x27;origin&#x27;: &#x27;https://mubu.com&#x27;, &#x27;sec-fetch-site&#x27;: &#x27;same-site&#x27;, &#x27;sec-fetch-mode&#x27;: &#x27;cors&#x27;, &#x27;sec-fetch-dest&#x27;: &#x27;empty&#x27;, &#x27;referer&#x27;: &#x27;https://mubu.com/&#x27;, &#x27;accept-encoding&#x27;: &#x27;gzip, deflate, br&#x27;, &#x27;accept-language&#x27;: &#x27;zh-CN,zh;q=0.9&#x27;, &#x27;HRUN-Request-ID&#x27;: &#x27;HRUN-36643de2-eb4d-4791-b99f-49bef5238f01-775064&#x27;}
+params: {}
+data: None
+cookies: {}
+timeout: 120
+allow_redirects: True
+verify: False
+json: {&#x27;phone&#x27;: &#x27;17328856339&#x27;, &#x27;password&#x27;: &#x27;LXE@19951101&#x27;, &#x27;callbackType&#x27;: 0}
+
+====== response details ======
+status_code: 0
+headers: {}
+body: &#x27;&#x27;
+
+2022-04-14 22:49:35.128 | INFO     | httprunner.runner:test_start:460 - generate testcase log: D:\dev-file\pythonWorkSpace\api_httprunner\logs\36643de2-eb4d-4791-b99f-49bef5238f01.run.log
+<br/></div></td></tr></tbody></table></body></html>
